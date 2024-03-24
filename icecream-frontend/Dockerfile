@@ -1,15 +1,15 @@
-FROM node:20@sha256:8d9887b3b05d2e65598a18616c37cfc271346d12248dfcbeadd7b7bf4da1e827 AS build
+FROM cgr.dev/chainguard/node@sha256:68ea048eac938baeb9b9612820b7dc2052afc8dcd10472e1ffc15b87496202e5 AS build
 
 WORKDIR /app
+USER node
 
-COPY . .
+COPY --chown=node:node . .
 
 RUN npm ci && \
-    npm run build && \
-    echo '{"type": "module"}' > package.json
+    npm run build
 
 
-FROM node:20-alpine@sha256:f62abc08fe1004555c4f28b6793af8345a76230b21d2d249976f329079e2fef2 AS prod
+FROM cgr.dev/chainguard/node@sha256:68ea048eac938baeb9b9612820b7dc2052afc8dcd10472e1ffc15b87496202e5 AS prod
 
 WORKDIR /app
 USER node
