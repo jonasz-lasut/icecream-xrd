@@ -1,0 +1,185 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xicecreams.icecompany.io
+  labels:
+    type: icecream
+    location: localCluster
+spec:
+  compositeTypeRef:
+    apiVersion: icecompany.io/v1alpha1
+    kind: XIceCream
+  patchSets:
+  - name: metadata
+    patches:
+    - fromFieldPath: metadata.labels
+  resources:
+  - name: kubernetes
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: ProviderConfig
+      spec:
+        credentials:
+          source: InjectedIdentity
+    patches:
+    - fromFieldPath: spec.id
+      toFieldPath: metadata.name
+    readinessChecks:
+    - type: None
+  - name: deployment
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: apps/v1
+            kind: Deployment
+            spec:
+              template:
+                spec:
+                  containers:
+                  - name: icecream
+                    ports:
+                    - containerPort: 3000
+                    resources:
+                      limits:
+                        memory: "256Mi"
+                        cpu: "125m"
+                    livenessProbe:
+                      httpGet:
+                        path: /
+                        port: 3000
+                    readinessProbe:
+                      httpGet:
+                        path: /
+                        port: 3000
+                    env:
+                    - name: ICECREAM_MANUFACTURER
+                    - name: ICECREAM_FLAVOUR
+    patches:
+    - fromFieldPath: metadata.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-deployment"
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.name
+    - fromFieldPath: spec.namespace
+      toFieldPath: spec.forProvider.manifest.metadata.namespace
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.labels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.selector.matchLabels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.template.metadata.labels.app
+    - fromFieldPath: spec.version
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
+      transforms:
+      - type: string
+        string:
+          fmt: "ghcr.io/jonasz-lasut/icecream:%s"
+    - fromFieldPath: spec.manufacturer
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].value
+    - fromFieldPath: spec.flavour
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[1].value
+    - fromFieldPath: spec.id
+      toFieldPath: spec.providerConfigRef.name
+    readinessChecks:
+    - type: None
+  - name: service
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: v1
+            kind: Service
+            spec:
+              type: ClusterIP
+              ports:
+              - port: 3000
+                targetPort: 3000
+                protocol: TCP
+                name: http
+    patches:
+    - fromFieldPath: metadata.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-service"
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.name
+    - fromFieldPath: spec.namespace
+      toFieldPath: spec.forProvider.manifest.metadata.namespace
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.labels.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.selector.app
+    - fromFieldPath: spec.id
+      toFieldPath: spec.providerConfigRef.name
+    readinessChecks:
+    - type: None
+  - name: ingress
+    base:
+      apiVersion: kubernetes.crossplane.io/v1alpha1
+      kind: Object
+      spec:
+        forProvider:
+          manifest:
+            apiVersion: networking.k8s.io/v1
+            kind: Ingress
+            metadata:
+              annotations:
+                cert-manager.io/cluster-issuer: selfsigned-cluster-issuer
+            spec:
+              rules:
+              - http:
+                  paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: icecream
+                        port:
+                          number: 3000
+                host: icecream.localhost
+              tls:
+              - hosts:
+                - icecream.localhost
+                secretName: icecream-tls
+    patches:
+    - fromFieldPath: metadata.name
+      toFieldPath: metadata.name
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-ingress"
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.name
+    - fromFieldPath: spec.namespace
+      toFieldPath: spec.forProvider.manifest.metadata.namespace
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.metadata.labels.app
+    - fromFieldPath: spec.hostname
+      toFieldPath: spec.forProvider.manifest.spec.rules[0].host
+    - fromFieldPath: spec.hostname
+      toFieldPath: spec.forProvider.manifest.spec.tls[0].hosts[0]
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.tls[0].secretName
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-tls"
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.name
+    - fromFieldPath: spec.id
+      toFieldPath: spec.providerConfigRef.name
+    - type: ToCompositeFieldPath
+      fromFieldPath: spec.forProvider.manifest.spec.rules[0].host
+      toFieldPath: status.ingressHostname
+    readinessChecks:
+    - type: None

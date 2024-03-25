@@ -1,0 +1,74 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xicecreamtrucks.icecompany.io
+  labels:
+    type: icecreamtruck
+    location: localCluster
+spec:
+  compositeTypeRef:
+    apiVersion: icecompany.io/v1alpha1
+    kind: XIceCreamTruck
+  mode: Pipeline
+  pipeline:
+  - functionRef:
+      name: crossplane-contrib-patch-and-transform
+    step: patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      patchSets:
+      - name: metadata
+        patches:
+        - fromFieldPath: metadata.labels
+          toFieldPath: metadata.labels
+      resources:
+      - name: kubernetes
+        base:
+          apiVersion: kubernetes.crossplane.io/v1alpha1
+          kind: ProviderConfig
+          spec:
+            credentials:
+              source: InjectedIdentity
+        patches:
+        - fromFieldPath: spec.id
+          toFieldPath: metadata.name
+        readinessChecks:
+        - type: None
+  - functionRef:
+      name: upbound-function-go-templating
+    step: icecream
+    input:
+      apiVersion: gotemplating.fn.crossplane.io/v1beta1
+      kind: GoTemplate
+      source: Inline
+      inline:
+        template: |
+          {{ range .observed.composite.resource.spec.icecream }}
+          ---
+          apiVersion: kubernetes.crossplane.io/v1alpha1
+          kind: Object
+          metadata:
+            name: {{ $.observed.composite.resource.spec.id }}-{{ .flavour }}-icecream-{{ .manufacturer }}
+            annotations:
+              gotemplating.fn.crossplane.io/composition-resource-name: {{ $.observed.composite.resource.spec.id }}-{{ .flavour }}-icecream-{{ .manufacturer }}
+          spec:
+            providerConfigRef:
+              name: {{ $.observed.composite.resource.spec.id }}
+            forProvider:
+              manifest:
+                apiVersion: icecompany.io/v1alpha1
+                kind: IceCream
+                metadata:
+                  name: {{ $.observed.composite.resource.spec.id }}-{{ .flavour }}-icecream-{{ .manufacturer }}
+                  namespace: icecream-system
+                spec:
+                  manufacturer: {{ .manufacturer }}
+                  id: {{ .flavour }}-icecream-{{ .manufacturer }}
+                  namespace: {{ $.observed.composite.resource.spec.namespace }}
+                  flavour: {{ .flavour }}
+                  hostname: {{ .flavour }}-{{ .manufacturer }}.localhost
+          {{ end }}
+  - functionRef:
+      name: upbound-function-auto-ready
+    step: automatically-detect-ready-composed-resources

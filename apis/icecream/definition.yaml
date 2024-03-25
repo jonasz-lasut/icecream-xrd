@@ -1,0 +1,68 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xicecreams.icecompany.io
+spec:
+  defaultCompositeDeletePolicy: Foreground
+  group: icecompany.io
+  names:
+    kind: XIceCream
+    plural: xicecreams
+  claimNames:
+    kind: IceCream
+    plural: icecreams
+  versions:
+  - name: v1alpha1
+    additionalPrinterColumns:
+      - jsonPath: .spec.manufacturer
+        name: MANUFACTURER
+        type: string
+      - jsonPath: .spec.flavour
+        name: FLAVOUR
+        type: string
+      - jsonPath: .spec.hostname
+        name: HOST
+        type: string
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              id:
+                type: string
+                description: "Identifier of the icecream advertisment"
+              namespace:
+                type: string
+              manufacturer:
+                type: string
+                description: "Manufacturer of the icecream in the advertisement"
+              flavour:
+                type: string
+                description: "Flavour of the icecream in the advertisement"
+                enum:
+                - strawberry
+                - pineapple
+                - lime
+              hostname:
+                type: string
+                description: "Hostname under which advertisement is available"
+              version:
+                type: string
+                description: "Version of the icecream advertisement"
+                default: "0.0.1"
+            required:
+              - manufacturer
+              - id
+              - namespace
+              - flavour
+              - hostname
+              - version
+          status:
+            type: object
+            properties:
+              ingressHostname:
+                type: string
