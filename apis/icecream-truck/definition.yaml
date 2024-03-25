@@ -1,0 +1,63 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xicecreamtrucks.icecompany.io
+spec:
+  defaultCompositeDeletePolicy: Foreground
+  group: icecompany.io
+  names:
+    kind: XIceCreamTruck
+    plural: xicecreamtrucks
+  claimNames:
+    kind: IceCreamTruck
+    plural: icecreamtrucks
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              icecream:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    manufacturer:
+                      type: string
+                      description: "Manufacturer of the icecream in the advertisement"
+                    flavour:
+                      type: string
+                      description: "Flavour of the icecream in the advertisement"
+                      enum:
+                      - strawberry
+                      - pineapple
+                      - lime
+                  required:
+                    - manufacturer
+                    - flavour
+              id:
+                type: string
+                description: "Identifier of the icecream truck"
+              namespace:
+                type: string
+              version:
+                type: string
+                description: "Version of the icecream advertisement image"
+                default: "0.0.1"
+            required:
+              - icecream
+              - id
+              - namespace
+              - version
+          status:
+            type: object
+            properties:
+              icecream:
+                type: array
+                items:
+                  type: string

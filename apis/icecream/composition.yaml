@@ -81,9 +81,9 @@ spec:
         string:
           fmt: "ghcr.io/jonasz-lasut/icecream:%s"
     - fromFieldPath: spec.manufacturer
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.env[0].value
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].value
     - fromFieldPath: spec.flavour
-      toFieldPath: spec.forProvider.manifest.spec.template.spec.env[1].value
+      toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[1].value
     - fromFieldPath: spec.id
       toFieldPath: spec.providerConfigRef.name
     readinessChecks:
@@ -147,6 +147,10 @@ spec:
                         port:
                           number: 3000
                 host: icecream.localhost
+              tls:
+              - hosts:
+                - icecream.localhost
+                secretName: icecream-tls
     patches:
     - fromFieldPath: metadata.name
       toFieldPath: metadata.name
@@ -162,6 +166,14 @@ spec:
       toFieldPath: spec.forProvider.manifest.metadata.labels.app
     - fromFieldPath: spec.hostname
       toFieldPath: spec.forProvider.manifest.spec.rules[0].host
+    - fromFieldPath: spec.hostname
+      toFieldPath: spec.forProvider.manifest.spec.tls[0].hosts[0]
+    - fromFieldPath: spec.id
+      toFieldPath: spec.forProvider.manifest.spec.tls[0].secretName
+      transforms:
+      - type: string
+        string:
+          fmt: "%s-tls"
     - fromFieldPath: spec.id
       toFieldPath: spec.forProvider.manifest.spec.rules[0].http.paths[0].backend.service.name
     - fromFieldPath: spec.id
